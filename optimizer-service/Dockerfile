@@ -1,4 +1,4 @@
-# Dockerfile pour usage-collector-service
+# Dockerfile pour optimizer-service
 FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /app
@@ -24,7 +24,7 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
 # Exposer le port
-EXPOSE 8083
+EXPOSE 8085
 
 # Commande pour démarrer l'application
 ENTRYPOINT ["java", "-jar", "app.jar"]

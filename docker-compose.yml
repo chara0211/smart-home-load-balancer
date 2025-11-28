@@ -54,7 +54,7 @@ services:
       dockerfile: Dockerfile
     container_name: smart-home-load-balancer-usage-collector-service
     ports:
-      - "8082:8082"
+      - "8083:8083"
     environment:
       SPRING_PROFILES_ACTIVE: docker
     depends_on:
@@ -68,6 +68,26 @@ services:
     labels:
       - "com.smarthome.project=smart-home-load-balancer"
       - "com.smarthome.service=usage-collector-service"
+
+  # Service Optimizer
+  optimizer-service:
+    build:
+      context: ./optimizer-service
+      dockerfile: Dockerfile
+    container_name: smart-home-load-balancer-optimizer-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - smart-home-load-balancer-network
+    restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=optimizer-service"
 
   # TODO: Ajouter d'autres services ici
   # device-service:

@@ -22,8 +22,8 @@ public class PeakDetectionService {
     private final RestTemplate restTemplate;
     private final RabbitTemplate rabbitTemplate;
 
-    // URL du service Usage Collector (à ajuster plus tard)
-    private final String usageCollectorBaseUrl = "http://localhost:8082";
+    // URL du service Usage Collector
+    private final String usageCollectorBaseUrl = "http://localhost:8083";
 
     public PeakDetectionService(RestTemplate restTemplate,
                                 RabbitTemplate rabbitTemplate) {
