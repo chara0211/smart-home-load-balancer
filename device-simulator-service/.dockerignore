@@ -1,0 +1,39 @@
+# Ignore Maven build output
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Maven wrapper system files
+.mvn/
+**/mvnw
+**/mvnw.cmd
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Node (if any UI assets inside)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
