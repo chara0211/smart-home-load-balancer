@@ -1,22 +1,95 @@
-version: '3.9'
+name: smart-home-load-balancer
 
 services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:16
+    container_name: smart-home-load-balancer-postgres
+    environment:
+      POSTGRES_DB: smarthome
+      POSTGRES_USER: smarthome
+      POSTGRES_PASSWORD: smarthome
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smarthome"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smart-home-load-balancer-network
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=postgres"
+
+  # Message Broker RabbitMQ
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
+    container_name: smart-home-load-balancer-rabbitmq
     ports:
       - "5672:5672"    # port AMQP pour Spring
       - "15672:15672"  # interface web de RabbitMQ
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smart-home-load-balancer-network
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=rabbitmq"
 
-  postgres:
-    image: postgres:15
-    container_name: postgres
-    environment:
-      POSTGRES_DB: smarthome
-      POSTGRES_USER: smarthome
-      POSTGRES_PASSWORD: smarthome
+  # Service Usage Collector
+  usage-collector-service:
+    build:
+      context: ./usage-collector-service
+      dockerfile: Dockerfile
+    container_name: smart-home-load-balancer-usage-collector-service
     ports:
-      - "5432:5432"    # port Postgres
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - smart-home-load-balancer-network
+    restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=usage-collector-service"
+
+  # TODO: Ajouter d'autres services ici
+  # device-service:
+  #   build:
+  #     context: ./device-service
+  #     dockerfile: Dockerfile
+  #   container_name: smart-home-device-service
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     - rabbitmq
+  #     - postgres
+  #   networks:
+  #     - smart-home-network
+
+volumes:
+  postgres_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+networks:
+  smart-home-load-balancer-network:
+    name: smart-home-load-balancer-network
+    driver: bridge

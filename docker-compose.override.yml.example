@@ -1,0 +1,18 @@
+# Fichier d'exemple pour les overrides de docker-compose
+# Copiez ce fichier vers docker-compose.override.yml pour personnaliser votre configuration
+# Ce fichier sera automatiquement utilisé par docker-compose
+
+version: '3.9'
+
+services:
+  # Exemple : Modifier le port du service usage-collector-service
+  # usage-collector-service:
+  #   ports:
+  #     - "9092:8082"  # Changer le port externe
+  
+  # Exemple : Ajouter des variables d'environnement
+  # usage-collector-service:
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=docker,dev
+  #     - LOGGING_LEVEL_ROOT=DEBUG
+
