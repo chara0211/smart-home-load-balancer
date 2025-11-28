@@ -1,0 +1,14 @@
+# Fichiers à ignorer lors de la construction Docker
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+**/HELP.md
+**/*.iml
+**/.idea/
+**/.vscode/
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+**/node_modules/
+**/.git/
+**/.gitignore
+

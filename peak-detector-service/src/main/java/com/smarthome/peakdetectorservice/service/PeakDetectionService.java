@@ -1,0 +1,88 @@
+package com.smarthome.peakdetectorservice.service;
+
+import com.smarthome.peakdetectorservice.config.RabbitConfig;
+import com.smarthome.peakdetectorservice.model.PeakEvent;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+
+@Slf4j
+@Service
+public class PeakDetectionService {
+
+    private static final double WARNING_THRESHOLD_KW = 4.0;
+    private static final double CRITICAL_THRESHOLD_KW = 5.0;
+
+    private final RestTemplate restTemplate;
+    private final RabbitTemplate rabbitTemplate;
+
+    // URL du service Usage Collector (à ajuster plus tard)
+    private final String usageCollectorBaseUrl = "http://localhost:8082";
+
+    public PeakDetectionService(RestTemplate restTemplate,
+                                RabbitTemplate rabbitTemplate) {
+        this.restTemplate = restTemplate;
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    @Scheduled(fixedRate = 5000)
+    public void checkForPeaks() {
+        Double totalPower = fetchCurrentPowerKw();
+        if (totalPower == null) {
+            return; // pas de données = pas d'alerte
+        }
+
+        String level = null;
+        if (totalPower >= CRITICAL_THRESHOLD_KW) {
+            level = "CRITICAL";
+        } else if (totalPower >= WARNING_THRESHOLD_KW) {
+            level = "WARNING";
+        }
+
+        if (level != null) {
+            PeakEvent event = new PeakEvent(
+                    UUID.randomUUID().toString(),
+                    level,
+                    totalPower,
+                    Instant.now()
+            );
+
+            log.info("⚡ Peak detected: level={} totalPower={}kW", level, totalPower);
+
+            rabbitTemplate.convertAndSend(
+                    RabbitConfig.ALERTS_EXCHANGE,
+                    "peak.detected",
+                    event
+            );
+        } else {
+            log.info("No peak: totalPower={}kW", totalPower);
+        }
+    }
+
+    private Double fetchCurrentPowerKw() {
+        try {
+            String url = usageCollectorBaseUrl + "/usage/current";
+
+            // Appel HTTP → renvoie un Map<String,Object>
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+
+            if (response == null || !response.containsKey("totalPowerKw")) {
+                log.warn("Unexpected response from Usage Collector: {}", response);
+                return null;
+            }
+
+            Number n = (Number) response.get("totalPowerKw");
+            return n.doubleValue();
+
+        } catch (Exception ex) {
+            log.warn("Failed to fetch /usage/current from Usage Collector: {}", ex.getMessage());
+            return null;
+        }
+    }
+}
