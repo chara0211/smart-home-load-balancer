@@ -1,7 +1,9 @@
 name: smart-home-load-balancer
 
 services:
+  # ======================
   # Base de données PostgreSQL
+  # ======================
   postgres:
     image: postgres:16
     container_name: smart-home-load-balancer-postgres
@@ -20,17 +22,16 @@ services:
       retries: 5
     networks:
       - smart-home-load-balancer-network
-    labels:
-      - "com.smarthome.project=smart-home-load-balancer"
-      - "com.smarthome.service=postgres"
 
+  # ======================
   # Message Broker RabbitMQ
+  # ======================
   rabbitmq:
     image: rabbitmq:3-management
     container_name: smart-home-load-balancer-rabbitmq
     ports:
       - "5672:5672"    # port AMQP pour Spring
-      - "15672:15672"  # interface web de RabbitMQ
+      - "15672:15672"  # interface web
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -43,11 +44,10 @@ services:
       retries: 5
     networks:
       - smart-home-load-balancer-network
-    labels:
-      - "com.smarthome.project=smart-home-load-balancer"
-      - "com.smarthome.service=rabbitmq"
 
-  # Service Usage Collector
+  # ======================
+  # Usage Collector Service
+  # ======================
   usage-collector-service:
     build:
       context: ./usage-collector-service
@@ -69,7 +69,55 @@ services:
       - "com.smarthome.project=smart-home-load-balancer"
       - "com.smarthome.service=usage-collector-service"
 
-  # Service Optimizer
+  # ======================
+  # Peak Detector Service
+  # ======================
+  peak-detector-service:
+    build:
+      context: ./peak-detector-service
+      dockerfile: Dockerfile
+    container_name: smart-home-load-balancer-peak-detector
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      usage-collector-service:
+        condition: service_started
+    networks:
+      - smart-home-load-balancer-network
+    restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=peak-detector-service"
+
+  # ======================
+  # Device Simulator Service
+  # ======================
+  device-simulator-service:
+    build:
+      context: ./device-simulator-service
+      dockerfile: Dockerfile
+    container_name: smart-home-load-balancer-device-simulator
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - smart-home-load-balancer-network
+    restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=device-simulator-service"
+
+  # ======================
+  # Optimizer Service
+  # ======================
   optimizer-service:
     build:
       context: ./optimizer-service
@@ -88,20 +136,6 @@ services:
     labels:
       - "com.smarthome.project=smart-home-load-balancer"
       - "com.smarthome.service=optimizer-service"
-
-  # TODO: Ajouter d'autres services ici
-  # device-service:
-  #   build:
-  #     context: ./device-service
-  #     dockerfile: Dockerfile
-  #   container_name: smart-home-device-service
-  #   ports:
-  #     - "8081:8081"
-  #   depends_on:
-  #     - rabbitmq
-  #     - postgres
-  #   networks:
-  #     - smart-home-network
 
 volumes:
   postgres_data:
