@@ -7,5 +7,9 @@ public enum DeviceType {
     TV,
     AIR_CONDITIONER,
     OVEN,
-    COMPUTER
+    MICROWAVE,
+    COMPUTER,
+    LIGHT,
+    HEATER,
+    DRYER
 }
