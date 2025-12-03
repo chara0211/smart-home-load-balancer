@@ -1,0 +1,13 @@
+# Dockerfile simplifié - nécessite que le JAR soit déjà construit localement
+# Usage: mvn clean package -DskipTests puis docker build -f Dockerfile.simple -t optimizer-service .
+FROM eclipse-temurin:17-jre-alpine
+
+WORKDIR /app
+
+# Copier le JAR depuis le répertoire target local
+COPY target/*.jar app.jar
+
+EXPOSE 8085
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+

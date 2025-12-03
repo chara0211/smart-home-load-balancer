@@ -65,6 +65,9 @@ services:
     networks:
       - smart-home-load-balancer-network
     restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=usage-collector-service"
 
   # ======================
   # Peak Detector Service
@@ -86,6 +89,9 @@ services:
     networks:
       - smart-home-load-balancer-network
     restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=peak-detector-service"
 
   # ======================
   # Device Simulator Service
@@ -105,6 +111,31 @@ services:
     networks:
       - smart-home-load-balancer-network
     restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=device-simulator-service"
+
+  # ======================
+  # Optimizer Service
+  # ======================
+  optimizer-service:
+    build:
+      context: ./optimizer-service
+      dockerfile: Dockerfile
+    container_name: smart-home-load-balancer-optimizer-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - smart-home-load-balancer-network
+    restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=optimizer-service"
 
 volumes:
   postgres_data:

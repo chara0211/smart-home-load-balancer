@@ -4,7 +4,6 @@ import com.smarthome.peakdetectorservice.config.RabbitConfig;
 import com.smarthome.peakdetectorservice.model.PeakEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -23,9 +22,8 @@ public class PeakDetectionService {
     private final RestTemplate restTemplate;
     private final RabbitTemplate rabbitTemplate;
 
-    // 🔥 Injecté depuis application.properties OU application-docker.properties
-    @Value("${usage.collector.base-url}")
-    private String usageCollectorBaseUrl;
+    // URL du service Usage Collector
+    private final String usageCollectorBaseUrl = "http://localhost:8083";
 
     public PeakDetectionService(RestTemplate restTemplate,
                                 RabbitTemplate rabbitTemplate) {
@@ -37,7 +35,7 @@ public class PeakDetectionService {
     public void checkForPeaks() {
         Double totalPower = fetchCurrentPowerKw();
         if (totalPower == null) {
-            return;
+            return; // pas de données = pas d'alerte
         }
 
         String level = null;
@@ -70,6 +68,8 @@ public class PeakDetectionService {
     private Double fetchCurrentPowerKw() {
         try {
             String url = usageCollectorBaseUrl + "/usage/current";
+
+            // Appel HTTP → renvoie un Map<String,Object>
             Map<String, Object> response = restTemplate.getForObject(url, Map.class);
 
             if (response == null || !response.containsKey("totalPowerKw")) {
