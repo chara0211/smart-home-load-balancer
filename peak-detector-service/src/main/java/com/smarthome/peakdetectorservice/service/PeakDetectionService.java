@@ -4,6 +4,7 @@ import com.smarthome.peakdetectorservice.config.RabbitConfig;
 import com.smarthome.peakdetectorservice.model.PeakEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -22,8 +23,9 @@ public class PeakDetectionService {
     private final RestTemplate restTemplate;
     private final RabbitTemplate rabbitTemplate;
 
-    // URL du service Usage Collector
-    private final String usageCollectorBaseUrl = "http://localhost:8083";
+    // injectée depuis application.properties / application-docker.properties
+    @Value("${usage.collector.base-url}")
+    private String usageCollectorBaseUrl;
 
     public PeakDetectionService(RestTemplate restTemplate,
                                 RabbitTemplate rabbitTemplate) {
@@ -33,9 +35,11 @@ public class PeakDetectionService {
 
     @Scheduled(fixedRate = 5000)
     public void checkForPeaks() {
+
         Double totalPower = fetchCurrentPowerKw();
         if (totalPower == null) {
-            return; // pas de données = pas d'alerte
+            log.warn("No power data from Usage Collector, skipping peak check.");
+            return;
         }
 
         String level = null;
@@ -53,7 +57,7 @@ public class PeakDetectionService {
                     Instant.now()
             );
 
-            log.info("⚡ Peak detected: level={} totalPower={}kW", level, totalPower);
+            log.info("⚡ Peak detected: level={} totalPower={} kW", level, totalPower);
 
             rabbitTemplate.convertAndSend(
                     RabbitConfig.ALERTS_EXCHANGE,
@@ -61,7 +65,7 @@ public class PeakDetectionService {
                     event
             );
         } else {
-            log.info("No peak: totalPower={}kW", totalPower);
+            log.info("No peak: totalPower={} kW", totalPower);
         }
     }
 
@@ -69,7 +73,8 @@ public class PeakDetectionService {
         try {
             String url = usageCollectorBaseUrl + "/usage/current";
 
-            // Appel HTTP → renvoie un Map<String,Object>
+            log.info("Calling Usage Collector at {}", url);
+
             Map<String, Object> response = restTemplate.getForObject(url, Map.class);
 
             if (response == null || !response.containsKey("totalPowerKw")) {
@@ -78,7 +83,10 @@ public class PeakDetectionService {
             }
 
             Number n = (Number) response.get("totalPowerKw");
-            return n.doubleValue();
+            double total = n.doubleValue();
+
+            log.info("Current total power from Usage Collector: {} kW", total);
+            return total;
 
         } catch (Exception ex) {
             log.warn("Failed to fetch /usage/current from Usage Collector: {}", ex.getMessage());

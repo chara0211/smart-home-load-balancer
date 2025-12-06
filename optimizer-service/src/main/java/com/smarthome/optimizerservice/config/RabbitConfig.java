@@ -1,6 +1,9 @@
 package com.smarthome.optimizerservice.config;
 
-import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -11,23 +14,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitConfig {
 
-    // Exchange pour recevoir les alertes de pic
+    // Exchange sur lequel PeakDetector envoie les alertes
     public static final String ALERTS_EXCHANGE = "alerts.exchange";
-    
-    // Exchange pour envoyer les commandes aux appareils
-    public static final String CONTROL_COMMANDS_EXCHANGE = "control.commands.exchange";
-    
-    // Queue pour recevoir les alertes de pic
+
+    // Queue sur laquelle Optimizer écoute les peaks
     public static final String PEAK_ALERTS_QUEUE = "peak.alerts.queue";
+
+    // Exchange déjà utilisé pour envoyer des commandes aux devices
+    public static final String CONTROL_COMMANDS_EXCHANGE = "control.commands.exchange";
 
     @Bean
     public TopicExchange alertsExchange() {
         return new TopicExchange(ALERTS_EXCHANGE);
-    }
-
-    @Bean
-    public DirectExchange controlCommandsExchange() {
-        return new DirectExchange(CONTROL_COMMANDS_EXCHANGE);
     }
 
     @Bean
@@ -37,21 +35,29 @@ public class RabbitConfig {
 
     @Bean
     public Binding peakAlertsBinding() {
+        // On route les messages envoyés avec routingKey = "peak.detected"
+        // vers la queue peak.alerts.queue
         return BindingBuilder.bind(peakAlertsQueue())
                 .to(alertsExchange())
                 .with("peak.detected");
     }
+
+    // ====== JSON converter pour PeakEvent & DeviceCommand ======
 
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
+    // Pour que @RabbitListener utilise le converter JSON
     @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            MessageConverter jsonMessageConverter
+    ) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
-        factory.setMessageConverter(jsonMessageConverter());
+        factory.setMessageConverter(jsonMessageConverter);
         return factory;
     }
 }

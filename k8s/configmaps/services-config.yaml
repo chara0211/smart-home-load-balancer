@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: services-config
+  namespace: smarthome
+data:
+  # Configuration des URLs des services
+  usage-collector-url: "http://usage-collector-service:8083"
+  peak-detector-url: "http://peak-detector-service:8084"
+  device-simulator-url: "http://device-simulator-service:8082"
+  optimizer-url: "http://optimizer-service:8085"
+  
+  # Configuration RabbitMQ
+  rabbitmq-host: "rabbitmq-service"
+  rabbitmq-port: "5672"
+  rabbitmq-username: "guest"
+  
+  # Configuration PostgreSQL
+  postgres-host: "postgres-service"
+  postgres-port: "5432"
+  postgres-database: "smarthome"
+  
+  # Configuration MongoDB
+  mongodb-host: "mongodb-service"
+  mongodb-port: "27017"
+  mongodb-database: "smarthome"
+  
+  # Configuration Keycloak
+  keycloak-url: "http://keycloak-service:8080"
+  keycloak-realm: "smarthome"
+

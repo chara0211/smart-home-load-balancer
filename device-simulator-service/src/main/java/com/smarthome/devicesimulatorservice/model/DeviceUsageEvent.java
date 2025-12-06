@@ -4,15 +4,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.Instant;
 
 @Data
-@AllArgsConstructor     // constructeur avec 6 arguments
-@NoArgsConstructor      // constructeur vide
-public class DeviceUsageEvent {
-
+@AllArgsConstructor
+@NoArgsConstructor
+public class DeviceUsageEvent implements Serializable {
     private String deviceId;
-    private String type;
+    private String deviceType;
     private String priority;
     private String state;
     private double currentPowerKw;
