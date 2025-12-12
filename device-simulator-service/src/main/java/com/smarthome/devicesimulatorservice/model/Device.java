@@ -4,11 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@AllArgsConstructor       // constructeur avec tous les champs
-@NoArgsConstructor        // constructeur vide
-public class Device {
+import java.io.Serializable;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class Device implements Serializable {
     private String id;
     private DeviceType type;
     private DevicePriority priority;

@@ -6,7 +6,7 @@ metadata:
   labels:
     app: usage-collector-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: usage-collector-service
@@ -81,4 +81,6 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 5
           failureThreshold: 30
+      imagePullSecrets:
+      - name: registry-secret
 

@@ -6,7 +6,7 @@ metadata:
   labels:
     app: peak-detector-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: peak-detector-service
@@ -48,7 +48,7 @@ spec:
         resources:
           requests:
             memory: "512Mi"
-            cpu: "100m"
+            cpu: "250m"
           limits:
             memory: "1Gi"
             cpu: "500m"
@@ -64,4 +64,6 @@ spec:
             port: 8084
           initialDelaySeconds: 30
           periodSeconds: 5
+      imagePullSecrets:
+      - name: registry-secret
 

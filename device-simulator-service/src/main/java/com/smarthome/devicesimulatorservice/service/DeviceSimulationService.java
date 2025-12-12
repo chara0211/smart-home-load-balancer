@@ -29,7 +29,7 @@ public class DeviceSimulationService {
     }
 
     // ============================================================
-    // 1) INITIALISATION : création automatique de plusieurs devices
+    // 1) INITIALISATION DES DEVICES
     // ============================================================
     @PostConstruct
     void initDevices() {
@@ -57,20 +57,24 @@ public class DeviceSimulationService {
         for (int i = 1; i <= 4; i++) {
             devices.add(createDevice("lamp-room-" + i, DeviceType.LIGHT, DevicePriority.LOW, 0.05));
         }
+
+        System.out.println("📌 " + devices.size() + " devices initialized.");
     }
 
     private Device createDevice(String id, DeviceType type, DevicePriority priority, double basePowerKw) {
         DeviceState initialState = (priority == DevicePriority.HIGH) ? DeviceState.ON : DeviceState.OFF;
-        double initialPower = (initialState == DeviceState.ON) ? basePowerKw : 0.0;
+        double initialPower = initialState == DeviceState.ON ? basePowerKw : 0.0;
 
         return new Device(id, type, priority, initialState, basePowerKw, initialPower);
     }
 
     // ============================================================
-    // 2) SIMULATION : toutes les 5 secondes
+    // 2) SIMULATION : exécuté toutes les 5 secondes
     // ============================================================
     @Scheduled(fixedRate = 5000)
     public void simulateAndPublish() {
+
+        System.out.println("\n🔁 === New Simulation Tick (" + devices.size() + " devices) ===");
 
         for (Device device : devices) {
 
@@ -79,6 +83,15 @@ public class DeviceSimulationService {
 
             // 2) Mise à jour de la consommation
             updatePower(device);
+
+            // 🔎 LOG COMPLET DU DEVICE
+            System.out.println(
+                    " Device: " + device.getId() + "\n" +
+                            "   • Type     : " + device.getType() + "\n" +
+                            "   • Priority : " + device.getPriority() + "\n" +
+                            "   • State    : " + device.getState() + "\n" +
+                            "   • Power    : " + device.getCurrentPowerKw() + " kW"
+            );
 
             // 3) Création de l'événement
             DeviceUsageEvent event = new DeviceUsageEvent(
@@ -96,6 +109,8 @@ public class DeviceSimulationService {
                     "device.usage." + device.getType().name().toLowerCase(),
                     event
             );
+
+            System.out.println("📤 Sent DeviceUsageEvent → " + event);
         }
     }
 
@@ -123,7 +138,7 @@ public class DeviceSimulationService {
     }
 
     // ============================================================
-    // 4) Simulation consommation électrique en fonction de l'état
+    // 4) Simulation consommation électrique
     // ============================================================
     private void updatePower(Device device) {
 

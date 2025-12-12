@@ -6,7 +6,7 @@ metadata:
   labels:
     app: optimizer-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: optimizer-service
@@ -46,7 +46,7 @@ spec:
         resources:
           requests:
             memory: "512Mi"
-            cpu: "100m"
+            cpu: "250m"
           limits:
             memory: "1Gi"
             cpu: "500m"
@@ -62,4 +62,6 @@ spec:
             port: 8085
           initialDelaySeconds: 30
           periodSeconds: 5
+      imagePullSecrets:
+      - name: registry-secret
 
