@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: smarthome
+data:
+  nginx.conf: |
+    upstream usage-collector {
+        server usage-collector-service:8083;
+    }
+    
+    upstream peak-detector {
+        server peak-detector-service:8084;
+    }
+    
+    upstream device-simulator {
+        server device-simulator-service:8082;
+    }
+    
+    upstream optimizer {
+        server optimizer-service:8085;
+    }
+    
+    server {
+        listen 80;
+        server_name _;
+        
+        # CORS headers
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type' always;
+        
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+        limit_req zone=api_limit burst=20 nodelay;
+        
+        # Usage Collector Service
+        location /api/usage/ {
+            limit_req zone=api_limit burst=20 nodelay;
+            proxy_pass http://usage-collector/usage/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        # Peak Detector Service
+        location /api/peaks/ {
+            limit_req zone=api_limit burst=20 nodelay;
+            proxy_pass http://peak-detector/peaks/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        # Device Simulator Service
+        location /api/devices/ {
+            limit_req zone=api_limit burst=20 nodelay;
+            proxy_pass http://device-simulator/devices/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        # Optimizer Service
+        location /api/optimizer/ {
+            limit_req zone=api_limit burst=20 nodelay;
+            proxy_pass http://optimizer/optimizer/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+

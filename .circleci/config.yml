@@ -1,0 +1,167 @@
+version: 2.1
+
+orbs:
+  docker: circleci/docker@2.0.0
+  kubernetes: circleci/kubernetes@1.3.0
+
+jobs:
+  build-usage-collector:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Build Usage Collector Service
+          command: |
+            cd usage-collector-service
+            mvn clean compile
+
+  test-usage-collector:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Test Usage Collector Service
+          command: |
+            cd usage-collector-service
+            mvn test
+
+  build-peak-detector:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Build Peak Detector Service
+          command: |
+            cd peak-detector-service
+            mvn clean compile
+
+  test-peak-detector:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Test Peak Detector Service
+          command: |
+            cd peak-detector-service
+            mvn test
+
+  build-device-simulator:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Build Device Simulator Service
+          command: |
+            cd device-simulator-service
+            mvn clean compile
+
+  test-device-simulator:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Test Device Simulator Service
+          command: |
+            cd device-simulator-service
+            mvn test
+
+  build-optimizer:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Build Optimizer Service
+          command: |
+            cd optimizer-service
+            mvn clean compile
+
+  test-optimizer:
+    docker:
+      - image: maven:3.9-eclipse-temurin-17
+    steps:
+      - checkout
+      - run:
+          name: Test Optimizer Service
+          command: |
+            cd optimizer-service
+            mvn test
+
+  build-docker-images:
+    docker:
+      - image: docker:24
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker Images
+          command: |
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            SERVICES=("usage-collector-service" "peak-detector-service" "device-simulator-service" "optimizer-service")
+            for SERVICE in "${SERVICES[@]}"; do
+              cd $SERVICE
+              docker build -t $DOCKER_REGISTRY/$SERVICE:$CIRCLE_SHA1 .
+              docker build -t $DOCKER_REGISTRY/$SERVICE:latest .
+              docker push $DOCKER_REGISTRY/$SERVICE:$CIRCLE_SHA1
+              docker push $DOCKER_REGISTRY/$SERVICE:latest
+              cd ..
+            done
+
+  deploy-kubernetes:
+    executor: kubernetes/default
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run:
+          name: Deploy to Kubernetes
+          command: |
+            SERVICES=("usage-collector-service" "peak-detector-service" "device-simulator-service" "optimizer-service")
+            for SERVICE in "${SERVICES[@]}"; do
+              kubectl set image deployment/$SERVICE \
+                $SERVICE=$DOCKER_REGISTRY/$SERVICE:$CIRCLE_SHA1 \
+                -n smarthome
+              kubectl rollout status deployment/$SERVICE -n smarthome
+            done
+
+workflows:
+  version: 2
+  build-test-deploy:
+    jobs:
+      - build-usage-collector
+      - build-peak-detector
+      - build-device-simulator
+      - build-optimizer
+      - test-usage-collector:
+          requires:
+            - build-usage-collector
+      - test-peak-detector:
+          requires:
+            - build-peak-detector
+      - test-device-simulator:
+          requires:
+            - build-device-simulator
+      - test-optimizer:
+          requires:
+            - build-optimizer
+      - build-docker-images:
+          requires:
+            - test-usage-collector
+            - test-peak-detector
+            - test-device-simulator
+            - test-optimizer
+          filters:
+            branches:
+              only: main
+      - deploy-kubernetes:
+          requires:
+            - build-docker-images
+          filters:
+            branches:
+              only: main
+

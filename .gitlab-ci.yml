@@ -1,0 +1,223 @@
+stages:
+  - build
+  - test
+  - package
+  - deploy
+
+variables:
+  DOCKER_REGISTRY: salmaidoufkir.com
+  KUBERNETES_NAMESPACE: smarthome
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+# Build stage
+build-usage-collector:
+  stage: build
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd usage-collector-service
+    - mvn clean compile
+  only:
+    - main
+    - develop
+    - merge_requests
+
+build-peak-detector:
+  stage: build
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd peak-detector-service
+    - mvn clean compile
+  only:
+    - main
+    - develop
+    - merge_requests
+
+build-device-simulator:
+  stage: build
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd device-simulator-service
+    - mvn clean compile
+  only:
+    - main
+    - develop
+    - merge_requests
+
+build-optimizer:
+  stage: build
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - cd optimizer-service
+    - mvn clean compile
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Test stage
+test-usage-collector:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  services:
+    - postgres:16
+    - rabbitmq:3-management
+  variables:
+    POSTGRES_DB: smarthome
+    POSTGRES_USER: smarthome
+    POSTGRES_PASSWORD: smarthome
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smarthome
+    SPRING_RABBITMQ_HOST: rabbitmq
+  script:
+    - cd usage-collector-service
+    - mvn test
+  only:
+    - main
+    - develop
+    - merge_requests
+
+test-peak-detector:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  services:
+    - rabbitmq:3-management
+  variables:
+    SPRING_RABBITMQ_HOST: rabbitmq
+  script:
+    - cd peak-detector-service
+    - mvn test
+  only:
+    - main
+    - develop
+    - merge_requests
+
+test-device-simulator:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  services:
+    - rabbitmq:3-management
+  variables:
+    SPRING_RABBITMQ_HOST: rabbitmq
+  script:
+    - cd device-simulator-service
+    - mvn test
+  only:
+    - main
+    - develop
+    - merge_requests
+
+test-optimizer:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  services:
+    - rabbitmq:3-management
+  variables:
+    SPRING_RABBITMQ_HOST: rabbitmq
+  script:
+    - cd optimizer-service
+    - mvn test
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Package stage - Build Docker images
+package-usage-collector:
+  stage: package
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $DOCKER_REGISTRY
+  script:
+    - cd usage-collector-service
+    - docker build -t $DOCKER_REGISTRY/usage-collector-service:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $DOCKER_REGISTRY/usage-collector-service:latest .
+    - docker push $DOCKER_REGISTRY/usage-collector-service:$CI_COMMIT_SHORT_SHA
+    - docker push $DOCKER_REGISTRY/usage-collector-service:latest
+  only:
+    - main
+
+package-peak-detector:
+  stage: package
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $DOCKER_REGISTRY
+  script:
+    - cd peak-detector-service
+    - docker build -t $DOCKER_REGISTRY/peak-detector-service:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $DOCKER_REGISTRY/peak-detector-service:latest .
+    - docker push $DOCKER_REGISTRY/peak-detector-service:$CI_COMMIT_SHORT_SHA
+    - docker push $DOCKER_REGISTRY/peak-detector-service:latest
+  only:
+    - main
+
+package-device-simulator:
+  stage: package
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $DOCKER_REGISTRY
+  script:
+    - cd device-simulator-service
+    - docker build -t $DOCKER_REGISTRY/device-simulator-service:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $DOCKER_REGISTRY/device-simulator-service:latest .
+    - docker push $DOCKER_REGISTRY/device-simulator-service:$CI_COMMIT_SHORT_SHA
+    - docker push $DOCKER_REGISTRY/device-simulator-service:latest
+  only:
+    - main
+
+package-optimizer:
+  stage: package
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $DOCKER_REGISTRY
+  script:
+    - cd optimizer-service
+    - docker build -t $DOCKER_REGISTRY/optimizer-service:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $DOCKER_REGISTRY/optimizer-service:latest .
+    - docker push $DOCKER_REGISTRY/optimizer-service:$CI_COMMIT_SHORT_SHA
+    - docker push $DOCKER_REGISTRY/optimizer-service:latest
+  only:
+    - main
+
+# Deploy stage
+deploy-to-kubernetes:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  before_script:
+    - kubectl config set-cluster k8s --server=$KUBERNETES_SERVER
+    - kubectl config set-credentials gitlab --token=$KUBERNETES_TOKEN
+    - kubectl config set-context default --cluster=k8s --user=gitlab
+    - kubectl config use-context default
+  script:
+    # Mettre à jour les images dans les deployments
+    - |
+      kubectl set image deployment/usage-collector-service \
+        usage-collector-service=$DOCKER_REGISTRY/usage-collector-service:$CI_COMMIT_SHORT_SHA \
+        -n $KUBERNETES_NAMESPACE
+    - |
+      kubectl set image deployment/peak-detector-service \
+        peak-detector-service=$DOCKER_REGISTRY/peak-detector-service:$CI_COMMIT_SHORT_SHA \
+        -n $KUBERNETES_NAMESPACE
+    - |
+      kubectl set image deployment/device-simulator-service \
+        device-simulator-service=$DOCKER_REGISTRY/device-simulator-service:$CI_COMMIT_SHORT_SHA \
+        -n $KUBERNETES_NAMESPACE
+    - |
+      kubectl set image deployment/optimizer-service \
+        optimizer-service=$DOCKER_REGISTRY/optimizer-service:$CI_COMMIT_SHORT_SHA \
+        -n $KUBERNETES_NAMESPACE
+    # Vérifier le rollout
+    - kubectl rollout status deployment/usage-collector-service -n $KUBERNETES_NAMESPACE
+    - kubectl rollout status deployment/peak-detector-service -n $KUBERNETES_NAMESPACE
+    - kubectl rollout status deployment/device-simulator-service -n $KUBERNETES_NAMESPACE
+    - kubectl rollout status deployment/optimizer-service -n $KUBERNETES_NAMESPACE
+  only:
+    - main
+  when: manual
+

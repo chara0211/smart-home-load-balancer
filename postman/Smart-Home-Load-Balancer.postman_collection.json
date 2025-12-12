@@ -1,0 +1,273 @@
+{
+	"info": {
+		"_postman_id": "smart-home-load-balancer",
+		"name": "Smart Home Load Balancer",
+		"description": "Collection pour tester les microservices déployés sur Kubernetes",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Usage Collector Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8083/actuator/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Vérifier que le service est opérationnel"
+					},
+					"response": []
+				},
+				{
+					"name": "Current Usage",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8083/usage/current",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"usage",
+								"current"
+							]
+						},
+						"description": "Obtenir la consommation actuelle"
+					},
+					"response": []
+				},
+				{
+					"name": "Usage History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8083/usage/history?limit=10",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"usage",
+								"history"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Nombre d'entrées à retourner"
+								}
+							]
+						},
+						"description": "Obtenir l'historique de consommation"
+					},
+					"response": []
+				},
+				{
+					"name": "Devices Usage",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8083/usage/devices",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"usage",
+								"devices"
+							]
+						},
+						"description": "Obtenir l'état de consommation par appareil"
+					},
+					"response": []
+				},
+				{
+					"name": "Save Snapshot",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8083/usage/save",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"usage",
+								"save"
+							]
+						},
+						"description": "Sauvegarder un snapshot de la consommation actuelle"
+					},
+					"response": []
+				}
+			],
+			"description": "Service de collecte de données de consommation"
+		},
+		{
+			"name": "Peak Detector Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8084/actuator/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8084",
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Vérifier que le service est opérationnel"
+					},
+					"response": []
+				}
+			],
+			"description": "Service de détection de pics de consommation"
+		},
+		{
+			"name": "Optimizer Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8085/optimizer/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8085",
+							"path": [
+								"optimizer",
+								"health"
+							]
+						},
+						"description": "Vérifier que le service est opérationnel"
+					},
+					"response": []
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8085/optimizer/info",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8085",
+							"path": [
+								"optimizer",
+								"info"
+							]
+						},
+						"description": "Obtenir les informations sur le service"
+					},
+					"response": []
+				}
+			],
+			"description": "Service d'optimisation de la consommation énergétique"
+		},
+		{
+			"name": "Device Simulator Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/actuator/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Vérifier que le service est opérationnel"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Devices",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/devices",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"devices"
+							]
+						},
+						"description": "Obtenir la liste des appareils simulés"
+					},
+					"response": []
+				}
+			],
+			"description": "Service de simulation d'appareils"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url_usage",
+			"value": "http://localhost:8083",
+			"type": "string"
+		},
+		{
+			"key": "base_url_peak",
+			"value": "http://localhost:8084",
+			"type": "string"
+		},
+		{
+			"key": "base_url_optimizer",
+			"value": "http://localhost:8085",
+			"type": "string"
+		},
+		{
+			"key": "base_url_device",
+			"value": "http://localhost:8082",
+			"type": "string"
+		}
+	]
+}
+

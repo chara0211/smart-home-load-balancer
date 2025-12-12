@@ -1,0 +1,96 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: smarthome-ingress
+  namespace: smarthome
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: smarthome.local  # Changez avec votre domaine
+    http:
+      paths:
+      # API Gateway
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 80
+      # Keycloak
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak-service
+            port:
+              number: 8080
+      # Prometheus
+      - path: /prometheus
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus-service
+            port:
+              number: 9090
+      # Grafana
+      - path: /grafana
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana-service
+            port:
+              number: 3000
+      # Kibana
+      - path: /kibana
+        pathType: Prefix
+        backend:
+          service:
+            name: kibana-service
+            port:
+              number: 5601
+      # RabbitMQ Management
+      - path: /rabbitmq
+        pathType: Prefix
+        backend:
+          service:
+            name: rabbitmq-service
+            port:
+              number: 15672
+      # Usage Collector Service
+      - path: /usage
+        pathType: Prefix
+        backend:
+          service:
+            name: usage-collector-service
+            port:
+              number: 8083
+      # Peak Detector Service
+      - path: /peak
+        pathType: Prefix
+        backend:
+          service:
+            name: peak-detector-service
+            port:
+              number: 8084
+      # Optimizer Service
+      - path: /optimizer
+        pathType: Prefix
+        backend:
+          service:
+            name: optimizer-service
+            port:
+              number: 8085
+      # Device Simulator Service
+      - path: /devices
+        pathType: Prefix
+        backend:
+          service:
+            name: device-simulator-service
+            port:
+              number: 8082
+
