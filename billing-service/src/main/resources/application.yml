@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: billing-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/smarthome
+    username: smarthome
+    password: smarthome
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8086
+
+# Morocco ONEE electricity rates (MAD/kWh, including 14% TVA)
+billing:
+  tier1:
+    rate: 1.06  # 0-100 kWh
+  tier2:
+    rate: 1.22  # 101-200 kWh
+  tier3:
+    rate: 1.35  # 201-500 kWh
+  tier4:
+    rate: 1.61  # 500+ kWh
+  subscription: 10.00  # Monthly subscription in MAD
+  tax:
+    rate: 0.14  # 14% TVA
+
+logging:
+  level:
+    com.smarthome.billing: INFO
+    org.springframework.amqp: WARN
+
+---
+# Docker profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/smarthome
+
+  rabbitmq:
+    host: rabbitmq
