@@ -10,8 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 @Slf4j
 @Service
@@ -27,8 +27,24 @@ public class PeakDetectionService {
     @Value("${usage.collector.base-url}")
     private String usageCollectorBaseUrl;
 
-    public PeakDetectionService(RestTemplate restTemplate,
-                                RabbitTemplate rabbitTemplate) {
+    // =========================
+    // 🔥 RECENT PEAKS BUFFER
+    // =========================
+    private final Deque<PeakEvent> recentPeaks = new ConcurrentLinkedDeque<>();
+    private static final int MAX_RECENT = 200;
+
+    private void pushPeak(PeakEvent event) {
+        recentPeaks.addFirst(event);
+        while (recentPeaks.size() > MAX_RECENT) {
+            recentPeaks.removeLast();
+        }
+    }
+
+    public List<PeakEvent> getRecentPeaks(int limit) {
+        return recentPeaks.stream().limit(limit).toList();
+    }
+
+    public PeakDetectionService(RestTemplate restTemplate, RabbitTemplate rabbitTemplate) {
         this.restTemplate = restTemplate;
         this.rabbitTemplate = rabbitTemplate;
     }
@@ -59,6 +75,9 @@ public class PeakDetectionService {
 
             log.info("⚡ Peak detected: level={} totalPower={} kW", level, totalPower);
 
+            // ✅ store in memory for the frontend
+            pushPeak(event);
+
             rabbitTemplate.convertAndSend(
                     RabbitConfig.ALERTS_EXCHANGE,
                     "peak.detected",
@@ -72,7 +91,6 @@ public class PeakDetectionService {
     private Double fetchCurrentPowerKw() {
         try {
             String url = usageCollectorBaseUrl + "/usage/current";
-
             log.info("Calling Usage Collector at {}", url);
 
             Map<String, Object> response = restTemplate.getForObject(url, Map.class);

@@ -137,7 +137,6 @@ services:
       - "com.smarthome.project=smart-home-load-balancer"
       - "com.smarthome.service=optimizer-service"
 
-  # ======================
   # Frontend Next.js
   # ======================
   frontend:
@@ -158,6 +157,39 @@ services:
     labels:
       - "com.smarthome.project=smart-home-load-balancer"
       - "com.smarthome.service=frontend"
+
+  # ======================
+  # Billing Service (NEW!)
+  # ======================
+  billing-service:
+    build:
+      context: ./billing-service
+      dockerfile: Dockerfile
+    container_name: smart-home-load-balancer-billing-service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # Morocco ONEE electricity rates (MAD/kWh, including 14% TVA)
+      BILLING_TIER1_RATE: 1.06
+      BILLING_TIER2_RATE: 1.22
+      BILLING_TIER3_RATE: 1.35
+      BILLING_TIER4_RATE: 1.61
+      BILLING_SUBSCRIPTION: 10.00
+      BILLING_TAX_RATE: 0.14
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      usage-collector-service:
+        condition: service_started
+    networks:
+      - smart-home-load-balancer-network
+    restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=billing-service"
 
 volumes:
   postgres_data:
