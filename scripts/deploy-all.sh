@@ -84,21 +84,27 @@ kubectl apply -f $K8S_DIR/services/device-simulator/
 kubectl apply -f $K8S_DIR/services/optimizer/
 echo "✅ Microservices déployés"
 
-# 8. Déployer l'API Gateway
+# 8. Déployer le Frontend
 echo ""
-echo "🌐 Étape 8: Déploiement de l'API Gateway..."
+echo "🎨 Étape 8: Déploiement du Frontend..."
+kubectl apply -f $K8S_DIR/services/frontend/
+echo "✅ Frontend déployé"
+
+# 9. Déployer l'API Gateway
+echo ""
+echo "🌐 Étape 9: Déploiement de l'API Gateway..."
 kubectl apply -f $K8S_DIR/api-gateway/
 echo "✅ API Gateway déployé"
 
-# 9. Déployer l'Ingress
+# 10. Déployer l'Ingress
 echo ""
-echo "🔀 Étape 9: Déploiement de l'Ingress..."
+echo "🔀 Étape 10: Déploiement de l'Ingress..."
 kubectl apply -f $K8S_DIR/ingress/
 echo "✅ Ingress déployé"
 
-# 10. Vérification finale
+# 11. Vérification finale
 echo ""
-echo "🔍 Étape 10: Vérification du déploiement..."
+echo "🔍 Étape 11: Vérification du déploiement..."
 echo ""
 echo "📋 État des pods:"
 kubectl get pods -n $NAMESPACE
@@ -115,6 +121,7 @@ echo ""
 echo "✅ Déploiement terminé!"
 echo ""
 echo "🌐 URLs d'accès (selon votre configuration Ingress):"
+echo "   - Frontend: http://your-domain/"
 echo "   - API Gateway: http://your-domain/api"
 echo "   - Keycloak: http://your-domain/auth"
 echo "   - Prometheus: http://your-domain/prometheus"

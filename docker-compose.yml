@@ -137,6 +137,28 @@ services:
       - "com.smarthome.project=smart-home-load-balancer"
       - "com.smarthome.service=optimizer-service"
 
+  # ======================
+  # Frontend Next.js
+  # ======================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smart-home-load-balancer-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://usage-collector-service:8083
+    depends_on:
+      usage-collector-service:
+        condition: service_started
+    networks:
+      - smart-home-load-balancer-network
+    restart: unless-stopped
+    labels:
+      - "com.smarthome.project=smart-home-load-balancer"
+      - "com.smarthome.service=frontend"
+
 volumes:
   postgres_data:
     driver: local

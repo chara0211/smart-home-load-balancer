@@ -93,4 +93,12 @@ spec:
             name: device-simulator-service
             port:
               number: 8082
+      # Frontend (doit être en dernier pour servir de fallback)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 3000
 

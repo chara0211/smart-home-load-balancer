@@ -1,147 +1,134 @@
-# Guide : Tester les Services avec Postman
+# Guide de Test avec Postman
 
-Ce guide explique comment tester tous vos microservices déployés sur Kubernetes avec Postman.
-
----
+Ce guide explique comment tester tous les services de Smart Home Load Balancer avec Postman via l'Ingress Kubernetes.
 
 ## 📋 Prérequis
 
-- Postman installé
-- Cluster Kubernetes en cours d'exécution
-- Tous les services déployés dans le namespace `smarthome`
+1. **Postman** installé sur votre machine
+2. **Kubernetes** avec Ingress configuré (voir `scripts/setup-ingress.ps1`)
+3. Tous les services déployés dans le namespace `smarthome`
 
----
+## 🔍 Étape 1 : Obtenir l'adresse de l'Ingress
 
-## 🔌 Étape 1 : Exposer les Services via Port-Forward
-
-Les services Kubernetes ne sont pas accessibles directement depuis votre machine. Vous devez utiliser `port-forward` pour les exposer localement.
-
-### Option A : Port-Forward Manuel (Terminal séparé pour chaque service)
-
-Ouvrez **4 terminaux PowerShell** et exécutez dans chacun :
-
-**Terminal 1 - Usage Collector Service (port 8083) :**
-```powershell
-kubectl port-forward service/usage-collector-service 8083:8083 -n smarthome
-```
-
-**Terminal 2 - Peak Detector Service (port 8084) :**
-```powershell
-kubectl port-forward service/peak-detector-service 8084:8084 -n smarthome
-```
-
-**Terminal 3 - Optimizer Service (port 8085) :**
-```powershell
-kubectl port-forward service/optimizer-service 8085:8085 -n smarthome
-```
-
-**Terminal 4 - Device Simulator Service (port 8082) :**
-```powershell
-kubectl port-forward service/device-simulator-service 8082:8082 -n smarthome
-```
-
-### Option B : Script PowerShell (Tous les services en arrière-plan)
-
-Créez un fichier `start-port-forwards.ps1` :
+### Option A : Via Minikube (recommandé)
 
 ```powershell
-# Démarrer tous les port-forwards en arrière-plan
-Write-Host "Démarrage des port-forwards..." -ForegroundColor Green
+# Obtenir l'IP de Minikube
+minikube ip
 
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forward service/usage-collector-service 8083:8083 -n smarthome"
-Start-Sleep -Seconds 2
-
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forward service/peak-detector-service 8084:8084 -n smarthome"
-Start-Sleep -Seconds 2
-
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forward service/optimizer-service 8085:8085 -n smarthome"
-Start-Sleep -Seconds 2
-
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "kubectl port-forward service/device-simulator-service 8082:8082 -n smarthome"
-
-Write-Host "✅ Tous les port-forwards sont démarrés" -ForegroundColor Green
-Write-Host "Les services sont maintenant accessibles sur localhost" -ForegroundColor Cyan
+# Exemple de résultat : 192.168.49.2
 ```
 
----
+### Option B : Via kubectl
 
-## 🧪 Étape 2 : Tests avec Postman
+```powershell
+# Obtenir l'IP de l'Ingress
+kubectl get ingress smarthome-ingress -n smarthome
 
-### 1. Usage Collector Service (Port 8083)
-
-#### Health Check
-```
-GET http://localhost:8083/actuator/health
-```
-
-**Réponse attendue :**
-```json
-{
-  "status": "UP",
-  "groups": ["liveness", "readiness"]
-}
+# Ou directement l'IP
+kubectl get ingress smarthome-ingress -n smarthome -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 
-#### Consommation Actuelle
+## ⚙️ Étape 2 : Configurer Postman
+
+### Méthode 1 : Utiliser le fichier hosts (Recommandé)
+
+1. **Ouvrir le fichier hosts en tant qu'administrateur** :
+   - Chemin : `C:\Windows\System32\drivers\etc\hosts`
+   - Clic droit → Ouvrir avec → Bloc-notes (en tant qu'administrateur)
+
+2. **Ajouter cette ligne** (remplacez `192.168.49.2` par votre IP Minikube) :
+   ```
+   192.168.49.2 smarthome.local
+   ```
+
+3. **Sauvegarder** le fichier
+
+4. **Dans Postman**, utilisez directement :
+   - Base URL : `http://smarthome.local`
+
+### Méthode 2 : Utiliser l'IP directement avec Header Host
+
+Si vous ne voulez pas modifier le fichier hosts, vous pouvez :
+
+1. **Dans Postman**, créez une variable d'environnement :
+   - Variable : `base_url`
+   - Valeur : `http://192.168.49.2` (remplacez par votre IP)
+
+2. **Ajoutez un header** dans chaque requête :
+   - Header : `Host`
+   - Value : `smarthome.local`
+
+## 📝 Étape 3 : Créer une Collection Postman
+
+### Configuration de la Collection
+
+1. Créez une nouvelle collection dans Postman
+2. Ajoutez une variable de collection :
+   - Variable : `base_url`
+   - Valeur : `http://smarthome.local` (ou `http://192.168.49.2` si méthode 2)
+   - Scope : Collection
+
+## 🚀 Endpoints à Tester
+
+### 1. Usage Collector Service
+
+**Base Path** : `/usage`
+
+#### GET - Consommation actuelle
 ```
-GET http://localhost:8083/usage/current
+GET {{base_url}}/usage/current
 ```
 
-**Réponse attendue :**
+**Réponse attendue** :
 ```json
 {
   "totalPowerKw": 2.5,
   "deviceCount": 5,
   "devices": {
-    "device1": 0.5,
-    "device2": 0.8,
-    ...
+    "device-1": 0.5,
+    "device-2": 0.8,
+    "device-3": 0.6,
+    "device-4": 0.4,
+    "device-5": 0.2
   }
 }
 ```
 
-#### Historique de Consommation
+#### GET - Historique de consommation
 ```
-GET http://localhost:8083/usage/history?limit=10
+GET {{base_url}}/usage/history?limit=10
 ```
 
-**Paramètres :**
+**Paramètres** :
 - `limit` (optionnel, défaut: 100) : Nombre d'entrées à retourner
 
-**Réponse attendue :**
-```json
-[
-  {
-    "id": 1,
-    "timestamp": "2025-12-06T15:30:00Z",
-    "totalPowerKw": 2.5,
-    "deviceCount": 5
-  },
-  ...
-]
+#### GET - État des appareils
+```
+GET {{base_url}}/usage/devices
 ```
 
-#### État des Appareils
-```
-GET http://localhost:8083/usage/devices
-```
-
-**Réponse attendue :**
+**Réponse attendue** :
 ```json
 {
-  "device1": 0.5,
-  "device2": 0.8,
-  "device3": 0.3,
-  ...
+  "device-1": 0.5,
+  "device-2": 0.8,
+  "device-3": 0.6
 }
 ```
 
-#### Sauvegarder un Snapshot
+#### POST - Sauvegarder un snapshot
 ```
-POST http://localhost:8083/usage/save
+POST {{base_url}}/usage/save
 ```
 
-**Réponse attendue :**
+**Headers** :
+- `Content-Type: application/json` (optionnel, pas de body requis)
+
+**Body** : 
+- **Aucun body requis** - Cet endpoint ne prend pas de paramètres
+
+**Réponse attendue** (200 OK) :
 ```json
 {
   "message": "Snapshot sauvegardé avec succès",
@@ -149,32 +136,39 @@ POST http://localhost:8083/usage/save
 }
 ```
 
----
-
-### 2. Peak Detector Service (Port 8084)
-
-#### Health Check
-```
-GET http://localhost:8084/actuator/health
-```
-
-**Réponse attendue :**
-```json
-{
-  "status": "UP"
-}
-```
+**Description** : 
+Sauvegarde un snapshot de l'état actuel de la consommation énergétique dans la base de données PostgreSQL. L'endpoint récupère automatiquement les données actuelles depuis le service d'agrégation et les enregistre avec un timestamp.
 
 ---
 
-### 3. Optimizer Service (Port 8085)
+### 2. Peak Detector Service
 
-#### Health Check
+**Base Path** : `/peak`
+
+#### GET - Health Check (via Actuator)
 ```
-GET http://localhost:8085/optimizer/health
+GET {{base_url}}/peak/actuator/health
 ```
 
-**Réponse attendue :**
+#### GET - Info (via Actuator)
+```
+GET {{base_url}}/peak/actuator/info
+```
+
+**Note** : Le Peak Detector Service n'a pas de contrôleur REST exposé. Il fonctionne en arrière-plan et envoie des alertes via RabbitMQ.
+
+---
+
+### 3. Optimizer Service
+
+**Base Path** : `/optimizer`
+
+#### GET - Health Check
+```
+GET {{base_url}}/optimizer/health
+```
+
+**Réponse attendue** :
 ```json
 {
   "status": "UP",
@@ -183,12 +177,12 @@ GET http://localhost:8085/optimizer/health
 }
 ```
 
-#### Informations du Service
+#### GET - Informations du service
 ```
-GET http://localhost:8085/optimizer/info
+GET {{base_url}}/optimizer/info
 ```
 
-**Réponse attendue :**
+**Réponse attendue** :
 ```json
 {
   "service": "optimizer-service",
@@ -201,296 +195,258 @@ GET http://localhost:8085/optimizer/info
 
 ---
 
-### 4. Device Simulator Service (Port 8082)
+### 4. Device Simulator Service
 
-#### Health Check
-```
-GET http://localhost:8082/actuator/health
-```
+**Base Path** : `/devices`
 
-**Réponse attendue :**
-```json
-{
-  "status": "UP"
-}
+#### GET - Liste des appareils simulés
+```
+GET {{base_url}}/devices/devices
 ```
 
-#### Liste des Appareils Simulés
-```
-GET http://localhost:8082/devices
-```
-
-**Réponse attendue :**
+**Réponse attendue** :
 ```json
 [
   {
-    "id": "device1",
-    "name": "Lave-linge",
+    "id": "device-1",
+    "name": "Réfrigérateur",
     "powerKw": 0.5,
     "status": "ON"
   },
   {
-    "id": "device2",
-    "name": "Lave-vaisselle",
+    "id": "device-2",
+    "name": "Lave-linge",
     "powerKw": 0.8,
     "status": "ON"
-  },
-  ...
+  }
 ]
 ```
 
 ---
 
-## 📦 Collection Postman
+### 5. Services de Monitoring
 
-### Créer une Collection Postman
-
-1. **Ouvrez Postman**
-2. **Créez une nouvelle Collection** : "Smart Home Load Balancer"
-3. **Ajoutez les requêtes suivantes** :
-
-#### Variables de Collection
-
-Créez des variables dans votre collection :
-- `base_url_usage` : `http://localhost:8083`
-- `base_url_peak` : `http://localhost:8084`
-- `base_url_optimizer` : `http://localhost:8085`
-- `base_url_device` : `http://localhost:8082`
-
-#### Requêtes à Ajouter
-
-**Usage Collector Service :**
-1. `GET {{base_url_usage}}/actuator/health`
-2. `GET {{base_url_usage}}/usage/current`
-3. `GET {{base_url_usage}}/usage/history?limit=10`
-4. `GET {{base_url_usage}}/usage/devices`
-5. `POST {{base_url_usage}}/usage/save`
-
-**Peak Detector Service :**
-1. `GET {{base_url_peak}}/actuator/health`
-
-**Optimizer Service :**
-1. `GET {{base_url_optimizer}}/optimizer/health`
-2. `GET {{base_url_optimizer}}/optimizer/info`
-
-**Device Simulator Service :**
-1. `GET {{base_url_device}}/actuator/health`
-2. `GET {{base_url_device}}/devices`
-
----
-
-## 🧪 Scénario de Test Complet
-
-### Test 1 : Vérifier que tous les services sont UP
-
-1. Tester tous les health checks
-2. Tous doivent retourner `"status": "UP"`
-
-### Test 2 : Flux de Données
-
-1. **GET /devices** (Device Simulator) → Voir les appareils
-2. **GET /usage/current** (Usage Collector) → Voir la consommation actuelle
-3. **POST /usage/save** (Usage Collector) → Sauvegarder un snapshot
-4. **GET /usage/history** (Usage Collector) → Vérifier que le snapshot est sauvegardé
-
-### Test 3 : Communication entre Services
-
-1. Les services communiquent via RabbitMQ (pas directement via HTTP)
-2. Vérifier dans RabbitMQ Management que les messages sont échangés
-
----
-
-## 🔍 Vérification RabbitMQ (Bonus)
-
-Pour voir les messages échangés entre services :
-
-```powershell
-# Port-forward RabbitMQ Management
-kubectl port-forward service/rabbitmq-service 15672:15672 -n smarthome
+#### Prometheus
+```
+GET {{base_url}}/prometheus
 ```
 
-Puis ouvrez dans le navigateur :
-- **URL** : http://localhost:15672
-- **Username** : `guest`
-- **Password** : `guest`
+#### Grafana
+```
+GET {{base_url}}/grafana
+```
 
-Dans l'interface RabbitMQ, vous pouvez voir :
-- Les queues créées
-- Les messages échangés
-- Les exchanges
+#### RabbitMQ Management
+```
+GET {{base_url}}/rabbitmq
+```
+
+**Note** : Pour RabbitMQ, vous devrez vous connecter avec les identifiants configurés dans les secrets Kubernetes.
 
 ---
+
+## 📋 Exemple de Collection Postman Complète
+
+### Structure recommandée
+
+```
+Smart Home Load Balancer
+├── Usage Collector
+│   ├── GET Current Usage
+│   ├── GET History
+│   ├── GET Devices
+│   └── POST Save Snapshot
+├── Optimizer
+│   ├── GET Health
+│   └── GET Info
+├── Device Simulator
+│   └── GET Devices
+└── Monitoring
+    ├── Prometheus
+    ├── Grafana
+    └── RabbitMQ
+```
+
+## 🔧 Configuration des Variables Postman
+
+### Variables d'Environnement
+
+Créez un environnement dans Postman avec :
+
+| Variable | Valeur | Description |
+|----------|--------|-------------|
+| `base_url` | `http://smarthome.local` | URL de base (ou IP Minikube) |
+| `host_header` | `smarthome.local` | Header Host (si méthode 2) |
+
+### Variables de Collection
+
+| Variable | Valeur Initiale | Description |
+|----------|-----------------|-------------|
+| `base_url` | `http://smarthome.local` | URL de base par défaut |
+
+## 🧪 Tests Automatisés (Scripts Postman)
+
+### Test pour GET /usage/current
+
+Dans l'onglet **Tests** de la requête :
+
+```javascript
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Response has totalPowerKw", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property('totalPowerKw');
+    pm.expect(jsonData.totalPowerKw).to.be.a('number');
+});
+
+pm.test("Response has devices", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property('devices');
+    pm.expect(jsonData.devices).to.be.an('object');
+});
+```
+
+### Test pour GET /optimizer/health
+
+```javascript
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Service is UP", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData.status).to.eql("UP");
+    pm.expect(jsonData.service).to.eql("optimizer-service");
+});
+```
 
 ## 🐛 Dépannage
 
-### Erreur : "Connection refused"
+### Erreur : Minikube n'est pas démarré
 
-**Cause :** Le port-forward n'est pas actif.
+Si vous obtenez l'erreur `The control-plane node minikube host does not exist` :
 
-**Solution :**
+#### Solution 1 : Démarrer Minikube en tant qu'administrateur (Recommandé)
+
+1. **Fermer PowerShell actuel**
+
+2. **Ouvrir PowerShell en tant qu'administrateur** :
+   - Clic droit sur PowerShell dans le menu Démarrer
+   - Sélectionner "Exécuter en tant qu'administrateur"
+
+3. **Naviguer vers le projet** :
+   ```powershell
+   cd D:\Salma\smart-home-load-balancer
+   ```
+
+4. **Démarrer Minikube** :
+   ```powershell
+   minikube start
+   ```
+
+5. **Vérifier que Minikube est démarré** :
+   ```powershell
+   minikube status
+   minikube ip
+   ```
+
+#### Solution 2 : Utiliser Docker Desktop comme driver
+
+Si vous avez Docker Desktop installé, vous pouvez utiliser le driver Docker :
+
 ```powershell
-# Vérifier que le port-forward est actif
-kubectl get pods -n smarthome
+# Supprimer le profil existant (si nécessaire)
+minikube delete
 
-# Relancer le port-forward
-kubectl port-forward service/usage-collector-service 8083:8083 -n smarthome
+# Démarrer avec Docker driver
+minikube start --driver=docker
 ```
 
-### Erreur : "Address already in use"
+#### Solution 3 : Alternative avec Docker Compose (sans Kubernetes)
 
-**Cause :** Le port est déjà utilisé.
+Si vous ne pouvez pas démarrer Minikube, vous pouvez tester les services directement avec Docker Compose :
 
-**Solution :**
-```powershell
-# Utiliser un autre port
-kubectl port-forward service/usage-collector-service 18083:8083 -n smarthome
-# Puis dans Postman, utilisez http://localhost:18083
-```
+1. **Lancer les services** :
+   ```powershell
+   docker-compose up -d
+   ```
 
-### Le service ne répond pas
+2. **Tester directement avec Postman** :
+   - Usage Collector : `http://localhost:8083/usage/current`
+   - Device Simulator : `http://localhost:8082/devices`
+   - RabbitMQ : `http://localhost:15672`
 
-**Vérifications :**
-1. Le pod est-il Running ?
+**Note** : Cette méthode ne nécessite pas Kubernetes ni Ingress, mais les services seront accessibles directement sur localhost.
+
+### Erreur : "Connection refused" ou "Unable to connect"
+
+1. **Vérifiez que l'Ingress est actif** :
+   ```powershell
+   kubectl get ingress -n smarthome
+   ```
+
+2. **Vérifiez que les services sont en cours d'exécution** :
    ```powershell
    kubectl get pods -n smarthome
    ```
 
-2. Le service existe-t-il ?
+3. **Vérifiez l'IP de Minikube** :
    ```powershell
-   kubectl get services -n smarthome
+   minikube ip
    ```
 
-3. Voir les logs du pod
+4. **Si vous utilisez la méthode 2 (IP + Header)** :
+   - Assurez-vous que le header `Host: smarthome.local` est présent dans chaque requête
+
+### Erreur : "404 Not Found"
+
+1. **Vérifiez le chemin** : L'Ingress utilise `rewrite-target: /`, donc les chemins doivent correspondre exactement
+2. **Vérifiez que le service est déployé** :
    ```powershell
-   kubectl logs -f deployment/usage-collector-service -n smarthome
+   kubectl get svc -n smarthome
    ```
 
----
+### Erreur : "502 Bad Gateway"
 
-## ✅ Checklist de Test
+1. **Vérifiez que les pods sont prêts** :
+   ```powershell
+   kubectl get pods -n smarthome
+   ```
 
-- [ ] Tous les port-forwards sont actifs
-- [ ] Health checks retournent `"status": "UP"`
-- [ ] `/usage/current` retourne des données
-- [ ] `/usage/history` retourne l'historique
-- [ ] `/devices` retourne la liste des appareils
-- [ ] `/usage/save` sauvegarde un snapshot
-- [ ] Les services communiquent via RabbitMQ
+2. **Vérifiez les logs du service** :
+   ```powershell
+   kubectl logs -n smarthome deployment/usage-collector-service
+   ```
 
----
+## 📊 Exemple de Workflow de Test Complet
 
-## 📝 Exemple de Collection Postman JSON
+1. **Tester la santé des services** :
+   - `GET /optimizer/health`
+   - `GET /peak/actuator/health`
 
-Vous pouvez importer cette collection dans Postman :
+2. **Récupérer les appareils** :
+   - `GET /devices/devices`
 
-```json
-{
-  "info": {
-    "name": "Smart Home Load Balancer",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    {
-      "key": "base_url_usage",
-      "value": "http://localhost:8083"
-    },
-    {
-      "key": "base_url_peak",
-      "value": "http://localhost:8084"
-    },
-    {
-      "key": "base_url_optimizer",
-      "value": "http://localhost:8085"
-    },
-    {
-      "key": "base_url_device",
-      "value": "http://localhost:8082"
-    }
-  ],
-  "item": [
-    {
-      "name": "Usage Collector",
-      "item": [
-        {
-          "name": "Health Check",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_usage}}/actuator/health"
-          }
-        },
-        {
-          "name": "Current Usage",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_usage}}/usage/current"
-          }
-        },
-        {
-          "name": "Usage History",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_usage}}/usage/history?limit=10"
-          }
-        },
-        {
-          "name": "Devices",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_usage}}/usage/devices"
-          }
-        },
-        {
-          "name": "Save Snapshot",
-          "request": {
-            "method": "POST",
-            "url": "{{base_url_usage}}/usage/save"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Optimizer",
-      "item": [
-        {
-          "name": "Health",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_optimizer}}/optimizer/health"
-          }
-        },
-        {
-          "name": "Info",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_optimizer}}/optimizer/info"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Device Simulator",
-      "item": [
-        {
-          "name": "Health Check",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_device}}/actuator/health"
-          }
-        },
-        {
-          "name": "Get Devices",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url_device}}/devices"
-          }
-        }
-      ]
-    }
-  ]
-}
-```
+3. **Vérifier la consommation actuelle** :
+   - `GET /usage/current`
 
----
+4. **Sauvegarder un snapshot** :
+   - `POST /usage/save`
 
-**Note :** Gardez les terminaux avec les port-forwards ouverts pendant vos tests. Si vous fermez un terminal, le port-forward s'arrête et vous devrez le relancer.
+5. **Consulter l'historique** :
+   - `GET /usage/history?limit=10`
 
+## 💡 Astuces
+
+1. **Utilisez des variables** : Créez des variables Postman pour éviter de répéter l'URL
+2. **Sauvegardez les réponses** : Créez des exemples de réponses pour la documentation
+3. **Tests automatiques** : Utilisez les scripts de test pour valider automatiquement les réponses
+4. **Environnements multiples** : Créez des environnements pour dev/staging/prod
+
+## 🔗 Liens Utiles
+
+- [Documentation Postman](https://learning.postman.com/docs/)
+- [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+- [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
