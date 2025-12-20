@@ -26,7 +26,17 @@ spec:
         - name: NODE_ENV
           value: "production"
         - name: NEXT_PUBLIC_BACKEND_URL
-          value: "http://172.30.95.94:30083"
+          value: "http://usage-collector-service:8083"
+        - name: USAGE_BASE_URL
+          value: "http://usage-collector-service:8083"
+        - name: DEVICE_BASE_URL
+          value: "http://device-simulator-service:8082"
+        - name: PEAK_BASE_URL
+          value: "http://peak-detector-service:8084"
+        - name: OPTIMIZER_BASE_URL
+          value: "http://optimizer-service:8085"
+        - name: BILLING_BASE_URL
+          value: "http://billing-service:8086"
         resources:
           requests:
             memory: "128Mi"
