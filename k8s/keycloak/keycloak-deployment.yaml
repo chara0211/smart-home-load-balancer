@@ -15,15 +15,37 @@ spec:
       labels:
         app: keycloak
     spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:16
+        command:
+        - /bin/sh
+        - -c
+        - |
+          until pg_isready -h postgres-service -p 5432 -U ${POSTGRES_USER}; do
+            echo "Waiting for PostgreSQL to be ready..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
       containers:
       - name: keycloak
         image: quay.io/keycloak/keycloak:23.0
-        args:
-        - start
-        - --optimized
-        - --hostname-strict=false
-        - --hostname-strict-https=false
-        - --proxy-headers=xforwarded
+        command:
+        - /bin/bash
+        - -c
+        - |
+          if [ ! -f /opt/keycloak/lib/quarkus/datasource/deployment/agroal/runtime/main/quarkus-agroal.jar ]; then
+            echo "Building Keycloak with PostgreSQL driver..."
+            /opt/keycloak/bin/kc.sh build --db=postgres
+          fi
+          echo "Starting Keycloak..."
+          /opt/keycloak/bin/kc.sh start --optimized --hostname-strict=false --hostname-strict-https=false
         ports:
         - containerPort: 8080
           name: http
@@ -56,30 +78,47 @@ spec:
           value: "false"
         - name: KC_HTTP_ENABLED
           value: "true"
+        - name: KC_PROXY
+          value: "edge"
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        - name: KC_METRICS_ENABLED
+          value: "true"
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "1.5Gi"
+            cpu: "750m"
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 8080
-          initialDelaySeconds: 120
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 10
+            memory: "3Gi"
+            cpu: "1500m"
         startupProbe:
           httpGet:
             path: /health/started
             port: 8080
-          initialDelaySeconds: 30
+            scheme: HTTP
+          initialDelaySeconds: 60
           periodSeconds: 10
-          failureThreshold: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 120
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 10
 

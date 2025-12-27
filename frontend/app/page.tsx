@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import LoginForm from "./components/LoginForm";
 import {
   Bell,
   Home,
@@ -168,7 +169,22 @@ async function safeJson<T>(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+    // Récupérer le token depuis localStorage
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, { 
+      cache: "no-store", 
+      signal: controller.signal,
+      headers
+    });
     clearTimeout(timeoutId);
 
     if (!res.ok) {
@@ -351,6 +367,7 @@ function generateRecommendations(power: number, devices: Device[], peaks: PeakEv
 ====================== */
 
 export default function AdvancedDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [power, setPower] = useState<number>(0);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -383,7 +400,47 @@ export default function AdvancedDashboard() {
 
   const logsRef = useRef<HTMLDivElement | null>(null);
 
+  // Vérifier l'authentification au chargement (une seule fois)
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      setIsAuthenticated(false);
+      return;
+    }
+    
+    const checkAuth = () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        // Vérifier si le token est expiré
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const exp = payload.exp * 1000;
+          if (Date.now() < exp) {
+            setIsAuthenticated(true);
+          } else {
+            localStorage.removeItem('auth_token');
+            setIsAuthenticated(false);
+          }
+        } catch (e) {
+          // Token invalide, le supprimer
+          localStorage.removeItem('auth_token');
+          setIsAuthenticated(false);
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, []); // Tableau de dépendances vide = exécuté une seule fois au montage
+
+  // Charger les données uniquement si authentifié
+  useEffect(() => {
+    // Ne pas charger les données si non authentifié ou en cours de vérification
+    if (isAuthenticated !== true) {
+      setIsLoading(false);
+      return;
+    }
+    
     let alive = true;
 
     async function tick() {
@@ -458,7 +515,7 @@ export default function AdvancedDashboard() {
       alive = false;
       clearInterval(id);
     };
-  }, []);
+  }, [isAuthenticated]); // Se réexécuter quand l'authentification change
 
   useEffect(() => {
     const el = logsRef.current;
@@ -466,6 +523,8 @@ export default function AdvancedDashboard() {
     el.scrollTop = 0;
   }, [optimizerLogs]);
 
+  // ⚠️ IMPORTANT : Tous les hooks (useMemo, etc.) doivent être appelés AVANT les returns conditionnels
+  // pour respecter les règles des hooks React
   const historicalData = useMemo(() => generateHistoricalData(power), [power]);
   const recommendations = useMemo(() => generateRecommendations(power, devices, peaks), [power, devices, peaks]);
 
@@ -531,6 +590,22 @@ export default function AdvancedDashboard() {
 
   // ✅ REAL savings from backend
   const realMonthlySavings = Number(savings.monthlySavingsMad ?? 0);
+
+  // Si en cours de vérification, afficher un loader
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0b1020]">
+        <Loader2 className="h-8 w-8 text-sky-300 animate-spin" />
+      </div>
+    );
+  }
+
+  // Si non authentifié, afficher le LoginForm
+  if (isAuthenticated === false) {
+    return <LoginForm onLogin={() => {
+      setIsAuthenticated(true);
+    }} />;
+  }
 
   return (
       <div className="min-h-screen w-full bg-gradient-to-b from-[#070A12] via-[#0B1020] to-[#070A12] text-white">

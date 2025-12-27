@@ -55,6 +55,16 @@ spec:
             secretKeyRef:
               name: rabbitmq-secret
               key: password
+        - name: KEYCLOAK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: keycloak-url
+        - name: KEYCLOAK_REALM
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: keycloak-realm
         # Morocco ONEE electricity rates (MAD/kWh, including 14% TVA)
         - name: BILLING_TIER1_RATE
           value: "1.06"
@@ -70,30 +80,35 @@ spec:
           value: "0.14"
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1Gi"
+            memory: "768Mi"
             cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /actuator/health/liveness
-            port: 8086
-          initialDelaySeconds: 60
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /actuator/health/readiness
-            port: 8086
-          initialDelaySeconds: 30
-          periodSeconds: 5
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 8086
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          failureThreshold: 30
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 60
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8086
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8086
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
       imagePullSecrets:
       - name: registry-secret
 

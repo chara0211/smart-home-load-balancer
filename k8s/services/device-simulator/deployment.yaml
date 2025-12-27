@@ -43,29 +43,47 @@ spec:
             secretKeyRef:
               name: rabbitmq-secret
               key: password
+        - name: KEYCLOAK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: keycloak-url
+        - name: KEYCLOAK_REALM
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: keycloak-realm
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
             memory: "512Mi"
             cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 60
         livenessProbe:
           httpGet:
             path: /actuator/health/liveness
             port: 8082
-          initialDelaySeconds: 120
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 10
         readinessProbe:
           httpGet:
-            path: /actuator/health/readiness
+            path: /actuator/health
             port: 8082
-          initialDelaySeconds: 90
+          initialDelaySeconds: 60
           periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
+          timeoutSeconds: 10
+          failureThreshold: 5
       imagePullSecrets:
       - name: registry-secret
 

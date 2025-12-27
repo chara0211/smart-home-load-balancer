@@ -60,8 +60,9 @@ spec:
           httpGet:
             path: /
             port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 5
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
           failureThreshold: 30
       imagePullSecrets:
       - name: registry-secret

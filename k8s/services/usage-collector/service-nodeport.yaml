@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: usage-collector-service-nodeport
+  namespace: smarthome
+  labels:
+    app: usage-collector-service
+spec:
+  type: NodePort
+  ports:
+  - port: 8083
+    targetPort: 8083
+    nodePort: 30083
+    protocol: TCP
+    name: http
+  selector:
+    app: usage-collector-service
+
