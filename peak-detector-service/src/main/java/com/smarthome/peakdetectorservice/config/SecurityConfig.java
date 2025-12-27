@@ -17,8 +17,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Actuator endpoints accessibles sans authentification (pour les probes Kubernetes)
-                .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/health").permitAll()
+                // ⚠️ IMPORTANT : Exclure TOUS les endpoints Actuator de la sécurité
+                // pour permettre les health checks Kubernetes
+                .requestMatchers("/actuator/**").permitAll()
                 // Tous les autres endpoints nécessitent une authentification
                 .anyRequest().authenticated()
             )

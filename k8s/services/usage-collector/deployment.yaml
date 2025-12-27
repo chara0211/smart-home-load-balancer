@@ -74,9 +74,9 @@ spec:
             cpu: "1000m"
         startupProbe:
           httpGet:
-            path: /actuator/health/startup
+            path: /actuator/health
             port: 8083
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 10
           successThreshold: 1

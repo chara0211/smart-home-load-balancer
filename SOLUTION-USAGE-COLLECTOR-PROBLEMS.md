@@ -104,3 +104,4 @@ Le service devrait être opérationnel et recevoir des événements RabbitMQ nor
 
 
 
+

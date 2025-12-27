@@ -217,3 +217,4 @@ Le pod devrait être `1/1 Ready` et `Running` avec `RESTARTS: 0`.
 
 
 
+
